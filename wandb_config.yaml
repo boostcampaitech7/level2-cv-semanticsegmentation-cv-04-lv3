@@ -1,0 +1,43 @@
+program: train.py
+method: random
+metric:
+  name: val/avg_dice
+  goal: maximize
+parameters:
+  TRAIN.LR:
+    distribution: uniform
+    min: 0.001
+    max: 0.01
+
+  # weight decay 설정
+  TRAIN.OPTIMIZER.PARAMS.weight_decay:
+    values: [0.0001, 0.001, 0.01]
+  # scheduler 설정 
+  TRAIN.SCHEDULER.NAME:
+    values: ["CosineAnnealingLR", "ExponentialLR"]
+  # loss 설정 
+  TRAIN.LOSS.NAME:
+    values: ["DiceFocalLoss", "BCEWithLogitsLoss"]
+
+  # CosineAnnealingLR parameters
+  TRAIN.LOSS.PARAMS.eta_min: [0.001, 0.0001, 0.00001]
+
+  # SWA 하이퍼 파라미터
+  TRAIN.SWA.USE_SWA:  # SWA 사용 여부
+    values: [true, false]
+  TRAIN.SWA.START:  # SWA 시작 epoch
+    values: [10, 20, 30]
+  TRAIN.SWA.LR:  # SWA learning rate
+    values: [0.0001, 0.001, 0.005]
+  TRAIN.SWA.ANNEAL_EPOCHS:  # SWA annealing epochs
+    values: [5, 10, 15]
+  TRAIN.SWA.STRATEGY:  # SWA annealing 전략
+    values: ["cos", "linear"]
+  
+  TRAIN.TRANSFORMS:
+    AFFINE.USE:
+      values: [true, false]
+    AFFINE.rotate:
+      values: [[-15, 15], [-30, 30], [-45, 45]]
+    HorizontalFlip.USE:
+      values: [true, false]

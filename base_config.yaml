@@ -103,4 +103,5 @@ WANDB:
   NOTES: "train baseline (UNet) with encoder weights None and lr 0.005" # 특이사항 혹은 tag로 설명이 안되면 추가해주시면 됩니다. 
   TAGS: ["UNet", "efficientnet-b0", "weights: None", "AdamW"]
   CONFIGS: *train_settings
-  WATCH_STEP: 5 # 5 epoch마다 wandb에 gradients/parameters 시각화
+  USE_SWEEPS: False # wandb sweeps를 실행하고 싶은 경우 True로 변경 
+  SWEEPS_PATH: "/data/ephemeral/home/lv2-ss/wandb_config.yaml"

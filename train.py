@@ -6,8 +6,9 @@ from torch.nn import functional as F
 #import torchvision.models as models
 from tqdm import tqdm
 import os
+import yaml
 
-from utils.utils import set_seed, save_model, wandb_model_log, save_csv
+from utils.utils import set_seed, save_model, wandb_model_log, save_csv, init_wandb
 from utils.metrics import dice_coef, encode_mask_to_rle
 from utils.optimizer import get_optimizer
 from utils.scheduler import get_scheduler
@@ -98,15 +99,8 @@ def validation(epoch, model, data_loader, criterion, thr=0.5):
     return avg_dice, dice_dict, result_rles
 
 def train(model, data_loader, val_loader, criterion, optimizer, scheduler):
-    run = wandb.init(
-        project=config.WANDB.PROJECT_NAME,
-        entity=config.WANDB.ENTITY, 
-        name=config.WANDB.RUN_NAME, 
-        notes=config.WANDB.NOTES, 
-        tags=config.WANDB.TAGS, 
-        config=config.WANDB.CONFIGS
-    )
-    wandb.watch(model, criterion, log="all", log_freq=config.WANDB.WATCH_STEP*len(data_loader))
+    
+    init_wandb(config)
     
     print(f'Start training..')
     
@@ -247,7 +241,21 @@ def main():
 
     # 학습 시작
     set_seed(config)
-    train(model, train_loader, valid_loader, criterion, optimizer, scheduler)
+    if config.WANDB.USE_SWEEP: # sweeps 사용 시 
+        # Sweep 설정 파일 로드 및 실행
+        with open(config.WANDB.SWEEPS_PATH) as f:
+            sweep_config = yaml.load(f, Loader=yaml.SafeLoader)
+        
+        sweep_id = wandb.sweep(
+            sweep_config, 
+            project=config.WANDB.PROJECT_NAME, 
+            entity=config.WANDB.ENTITY
+        )
+        
+        wandb.agent(sweep_id, function=main)
+    else:
+        train(model, train_loader, valid_loader, criterion, optimizer, scheduler)
+
 
 if __name__ == '__main__':
     args = parse_args()

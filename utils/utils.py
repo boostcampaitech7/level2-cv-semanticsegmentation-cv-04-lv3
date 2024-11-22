@@ -19,6 +19,75 @@ def save_model(config, model):
     if not os.path.exists(config.MODEL.SAVED_DIR):
         os.makedirs(config.MODEL.SAVED_DIR)
     torch.save(model.state_dict(), output_path)
+    
+def init_wandb(config):
+    if config.WANDB.USE_SWEEP:
+        with wandb.init() as run: 
+            # config 업데이트
+            config.TRAIN.LR = wandb.config.get("TRAIN.LR", config.TRAIN.LR)
+            config.TRAIN.OPTIMIZER.PARAMS.weight_decay = wandb.config.get(
+                "TRAIN.OPTIMIZER.PARAMS.weight_decay", 
+                config.TRAIN.OPTIMIZER.PARAMS.weight_decay
+            )
+            
+            scheduler_name = wandb.config.get("TRAIN.SCHEDULER.NAME")
+            config.TRAIN.SCHEDULER.NAME = scheduler_name
+            
+            # Loss 설정 업데이트
+            config.TRAIN.LOSS.NAME = wandb.config.get("TRAIN.LOSS.NAME", config.TRAIN.LOSS.NAME)
+            if scheduler_name == "CosineAnnealingLR":
+                config.TRAIN.LOSS.PARAMS.eta_min = wandb.config.get("TRAIN.LOSS.PARAMS.eta_min")
+
+            use_swa = wandb.config.get("TRAIN.SWA.USE_SWA", False)
+            if use_swa:
+                if not hasattr(config.TRAIN, 'SWA'):
+                    config.TRAIN.SWA = type('', (), {})()  # 빈 객체 생성
+                
+                config.TRAIN.SWA.START = wandb.config.get("TRAIN.SWA.START")
+                config.TRAIN.SWA.LR = wandb.config.get("TRAIN.SWA.LR")
+                config.TRAIN.SWA.ANNEAL_EPOCHS = wandb.config.get("TRAIN.SWA.ANNEAL_EPOCHS")
+                config.TRAIN.SWA.STRATEGY = wandb.config.get("TRAIN.SWA.STRATEGY")
+            else:
+                if hasattr(config.TRAIN, 'SWA'):
+                    delattr(config.TRAIN, 'SWA')
+                    
+            transforms_list = []
+            transforms_list.extend([
+                transform for transform in config.TRAIN.TRANSFORMS 
+                if transform["NAME"] == "Resize"
+            ])
+            
+            if wandb.config.get("TRAIN.TRANSFORMS.AFFINE.USE", False):
+                transforms_list.append({
+                    "NAME": "Affine",
+                    "PARAMS": {
+                        "rotate": wandb.config.get("TRAIN.TRANSFORMS.AFFINE.rotate")
+                    }
+                })
+            if wandb.config.get("TRAIN.TRANSFORMS.HorizontalFlip.USE", False):
+                transforms_list.append({
+                    "NAME": "HorizontalFlip",
+                    "PARAMS": {}
+                })
+
+            config.TRAIN.TRANSFORMS = transforms_list
+            
+            # wandb run 설정
+            wandb.run.name = f"{config.WANDB.RUN_NAME}_{wandb.run.id}"
+            wandb.run.notes = config.WANDB.NOTES
+            wandb.run.tags = config.WANDB.TAGS
+            wandb.config.update(config.WANDB.CONFIGS)
+    else:
+        # 일반 모드로 실행될 때
+        run = wandb.init(
+            project=config.WANDB.PROJECT_NAME,
+            entity=config.WANDB.ENTITY, 
+            name=config.WANDB.RUN_NAME, 
+            notes=config.WANDB.NOTES, 
+            tags=config.WANDB.TAGS, 
+            config=config.WANDB.CONFIGS
+        )
+
 
 def wandb_model_log(config):
     model_path = os.path.join(config.MODEL.SAVED_DIR, config.MODEL.MODEL_NAME)
