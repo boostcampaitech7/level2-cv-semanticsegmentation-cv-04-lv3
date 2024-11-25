@@ -241,7 +241,7 @@ def main():
 
     # 학습 시작
     set_seed(config)
-    if config.WANDB.USE_SWEEP: # sweeps 사용 시 
+    if config.WANDB.USE_SWEEPS: # sweeps 사용 시 
         # Sweep 설정 파일 로드 및 실행
         with open(config.WANDB.SWEEPS_PATH) as f:
             sweep_config = yaml.load(f, Loader=yaml.SafeLoader)

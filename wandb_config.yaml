@@ -20,7 +20,12 @@ parameters:
     values: ["DiceFocalLoss", "BCEWithLogitsLoss"]
 
   # CosineAnnealingLR parameters
-  TRAIN.LOSS.PARAMS.eta_min: [0.001, 0.0001, 0.00001]
+  TRAIN.LOSS.PARAMS.eta_min: 
+    values: [0.001, 0.0001, 0.00001]
+
+  # ExponentialLR parameters
+  TRAIN.LOSS.PARAMS.gamma: 
+    values: [0.90, 0.95, 0.99]
 
   # SWA 하이퍼 파라미터
   TRAIN.SWA.USE_SWA:  # SWA 사용 여부
@@ -34,10 +39,9 @@ parameters:
   TRAIN.SWA.STRATEGY:  # SWA annealing 전략
     values: ["cos", "linear"]
   
-  TRAIN.TRANSFORMS:
-    AFFINE.USE:
-      values: [true, false]
-    AFFINE.rotate:
-      values: [[-15, 15], [-30, 30], [-45, 45]]
-    HorizontalFlip.USE:
-      values: [true, false]
+  TRAIN.TRANSFORMS.use_affine:
+    values: [true, false]
+  TRAIN.TRANSFORMS.affine_rotate:
+    values: [[-15, 15], [-30, 30], [-45, 45]]
+  TRAIN.TRANSFORMS.use_horizontal_flip:
+    values: [true, false]

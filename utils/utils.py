@@ -21,23 +21,30 @@ def save_model(config, model):
     torch.save(model.state_dict(), output_path)
     
 def init_wandb(config):
+    """wandb 초기화 함수"""
     if config.WANDB.USE_SWEEP:
-        with wandb.init() as run: 
-            # config 업데이트
+        with wandb.init() as run:
+            # 기본 하이퍼파라미터 업데이트
             config.TRAIN.LR = wandb.config.get("TRAIN.LR", config.TRAIN.LR)
             config.TRAIN.OPTIMIZER.PARAMS.weight_decay = wandb.config.get(
                 "TRAIN.OPTIMIZER.PARAMS.weight_decay", 
                 config.TRAIN.OPTIMIZER.PARAMS.weight_decay
             )
             
+            # Loss 설정 업데이트 
+            config.TRAIN.LOSS.NAME = wandb.config.get("TRAIN.LOSS.NAME", config.TRAIN.LOSS.NAME)
+            
+            # Scheduler 설정 업데이트
             scheduler_name = wandb.config.get("TRAIN.SCHEDULER.NAME")
             config.TRAIN.SCHEDULER.NAME = scheduler_name
             
-            # Loss 설정 업데이트
-            config.TRAIN.LOSS.NAME = wandb.config.get("TRAIN.LOSS.NAME", config.TRAIN.LOSS.NAME)
+            # Scheduler별 파라미터 설정
             if scheduler_name == "CosineAnnealingLR":
                 config.TRAIN.LOSS.PARAMS.eta_min = wandb.config.get("TRAIN.LOSS.PARAMS.eta_min")
-
+            elif scheduler_name == "ExponentialLR":
+                config.TRAIN.LOSS.PARAMS.gamma = wandb.config.get("TRAIN.LOSS.PARAMS.gamma")
+            
+            # SWA 설정 업데이트
             use_swa = wandb.config.get("TRAIN.SWA.USE_SWA", False)
             if use_swa:
                 if not hasattr(config.TRAIN, 'SWA'):
@@ -50,29 +57,36 @@ def init_wandb(config):
             else:
                 if hasattr(config.TRAIN, 'SWA'):
                     delattr(config.TRAIN, 'SWA')
-                    
+            
+            # Transform 설정 업데이트
             transforms_list = []
+            
+            # Resize는 기본 설정 유지
             transforms_list.extend([
                 transform for transform in config.TRAIN.TRANSFORMS 
                 if transform["NAME"] == "Resize"
             ])
             
-            if wandb.config.get("TRAIN.TRANSFORMS.AFFINE.USE", False):
+            # Affine Transform
+            if wandb.config.get("TRAIN.TRANSFORMS.use_affine", False):
                 transforms_list.append({
                     "NAME": "Affine",
                     "PARAMS": {
-                        "rotate": wandb.config.get("TRAIN.TRANSFORMS.AFFINE.rotate")
+                        "rotate": wandb.config.get("TRAIN.TRANSFORMS.affine_rotate")
                     }
                 })
-            if wandb.config.get("TRAIN.TRANSFORMS.HorizontalFlip.USE", False):
+            
+            # HorizontalFlip
+            if wandb.config.get("TRAIN.TRANSFORMS.use_horizontal_flip", False):
                 transforms_list.append({
                     "NAME": "HorizontalFlip",
                     "PARAMS": {}
                 })
-
+            
+            # config의 transforms 리스트 업데이트
             config.TRAIN.TRANSFORMS = transforms_list
             
-            # wandb run 설정
+            # wandb 실험 설정
             wandb.run.name = f"{config.WANDB.RUN_NAME}_{wandb.run.id}"
             wandb.run.notes = config.WANDB.NOTES
             wandb.run.tags = config.WANDB.TAGS
